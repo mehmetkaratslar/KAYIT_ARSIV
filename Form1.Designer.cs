@@ -64,13 +64,13 @@
             D_tipi = new Label();
             Y_sec = new Label();
             YedeklemePanel = new TabPage();
+            YedekBasla = new Button();
             label4 = new Label();
             YedekData = new DataGridView();
             YedekTarih = new ComboBox();
             label3 = new Label();
             YedekKisiSec = new ComboBox();
             TumKisi = new CheckBox();
-            YedekBasla = new Button();
             label1 = new Label();
             YeniKisiEkle = new TabPage();
             label5 = new Label();
@@ -525,13 +525,13 @@
             YedeklemePanel.AllowDrop = true;
             YedeklemePanel.BackColor = Color.Teal;
             YedeklemePanel.BackgroundImage = (Image)resources.GetObject("YedeklemePanel.BackgroundImage");
+            YedeklemePanel.Controls.Add(YedekBasla);
             YedeklemePanel.Controls.Add(label4);
             YedeklemePanel.Controls.Add(YedekData);
             YedeklemePanel.Controls.Add(YedekTarih);
             YedeklemePanel.Controls.Add(label3);
             YedeklemePanel.Controls.Add(YedekKisiSec);
             YedeklemePanel.Controls.Add(TumKisi);
-            YedeklemePanel.Controls.Add(YedekBasla);
             YedeklemePanel.Controls.Add(label1);
             YedeklemePanel.Location = new Point(4, 56);
             YedeklemePanel.Name = "YedeklemePanel";
@@ -540,52 +540,64 @@
             YedeklemePanel.TabIndex = 2;
             YedeklemePanel.Text = "YEDEKLEME PANELİ";
             // 
+            // YedekBasla
+            // 
+            YedekBasla.AllowDrop = true;
+            YedekBasla.BackColor = Color.BlanchedAlmond;
+            YedekBasla.ForeColor = SystemColors.Desktop;
+            YedekBasla.Location = new Point(645, 108);
+            YedekBasla.Name = "YedekBasla";
+            YedekBasla.Size = new Size(300, 68);
+            YedekBasla.TabIndex = 32;
+            YedekBasla.Text = "YEDEKLEMEYE BAŞLA";
+            YedekBasla.UseVisualStyleBackColor = false;
+            YedekBasla.Click += YedekBasla_Click;
+            // 
             // label4
             // 
             label4.AllowDrop = true;
-            label4.Anchor = AnchorStyles.Left | AnchorStyles.Right;
             label4.AutoSize = true;
             label4.BackColor = SystemColors.Control;
-            label4.BorderStyle = BorderStyle.Fixed3D;
-            label4.Cursor = Cursors.SizeAll;
-            label4.FlatStyle = FlatStyle.System;
             label4.ForeColor = Color.DarkBlue;
-            label4.Location = new Point(634, 285);
+            label4.Location = new Point(12, 342);
             label4.Name = "label4";
-            label4.Size = new Size(315, 34);
-            label4.TabIndex = 27;
-            label4.Text = "YEDEKLENEN DOSYALAR ";
+            label4.Size = new Size(306, 32);
+            label4.TabIndex = 31;
+            label4.Text = "YEDEKLENEN DOSYALAR";
             // 
             // YedekData
             // 
-            YedekData.AllowDrop = true;
-            YedekData.AllowUserToOrderColumns = true;
-            YedekData.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            YedekData.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             YedekData.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            YedekData.BackgroundColor = Color.DarkCyan;
-            YedekData.ColumnHeadersHeight = 34;
-            YedekData.Location = new Point(7, 320);
+            YedekData.BackgroundColor = Color.Coral;
+            YedekData.BorderStyle = BorderStyle.Fixed3D;
+            YedekData.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            YedekData.Location = new Point(3, 377);
             YedekData.Name = "YedekData";
             YedekData.RowHeadersWidth = 62;
-            YedekData.Size = new Size(1820, 789);
-            YedekData.TabIndex = 26;
+            YedekData.Size = new Size(1828, 732);
+            YedekData.TabIndex = 30;
             // 
             // YedekTarih
             // 
+            YedekTarih.AllowDrop = true;
+            YedekTarih.BackColor = SystemColors.Window;
             YedekTarih.FormattingEnabled = true;
-            YedekTarih.Location = new Point(211, 178);
+            YedekTarih.Location = new Point(203, 118);
             YedekTarih.Name = "YedekTarih";
             YedekTarih.Size = new Size(360, 40);
-            YedekTarih.TabIndex = 25;
+            YedekTarih.TabIndex = 29;
             // 
             // label3
             // 
+            label3.AllowDrop = true;
             label3.AutoSize = true;
-            label3.BackColor = Color.Wheat;
-            label3.Location = new Point(20, 186);
+            label3.BackColor = SystemColors.Control;
+            label3.ForeColor = Color.DarkBlue;
+            label3.Location = new Point(12, 126);
             label3.Name = "label3";
             label3.Size = new Size(139, 32);
-            label3.TabIndex = 24;
+            label3.TabIndex = 28;
             label3.Text = "TARİH SEÇ";
             // 
             // YedekKisiSec
@@ -593,7 +605,7 @@
             YedekKisiSec.AllowDrop = true;
             YedekKisiSec.BackColor = SystemColors.Window;
             YedekKisiSec.FormattingEnabled = true;
-            YedekKisiSec.Location = new Point(211, 77);
+            YedekKisiSec.Location = new Point(203, 25);
             YedekKisiSec.Name = "YedekKisiSec";
             YedekKisiSec.Size = new Size(360, 40);
             YedekKisiSec.TabIndex = 23;
@@ -603,25 +615,12 @@
             TumKisi.AutoSize = true;
             TumKisi.BackColor = SystemColors.ControlLight;
             TumKisi.ForeColor = Color.Crimson;
-            TumKisi.Location = new Point(680, 77);
+            TumKisi.Location = new Point(645, 29);
             TumKisi.Name = "TumKisi";
             TumKisi.Size = new Size(311, 36);
             TumKisi.TabIndex = 20;
             TumKisi.Text = "TÜM KİŞİLERİ YEDEKLE";
             TumKisi.UseVisualStyleBackColor = false;
-            // 
-            // YedekBasla
-            // 
-            YedekBasla.AllowDrop = true;
-            YedekBasla.BackColor = Color.Azure;
-            YedekBasla.ForeColor = Color.DarkBlue;
-            YedekBasla.Location = new Point(680, 168);
-            YedekBasla.Name = "YedekBasla";
-            YedekBasla.Size = new Size(303, 69);
-            YedekBasla.TabIndex = 19;
-            YedekBasla.Text = "YEDEKLEMEYE BAŞLA";
-            YedekBasla.UseVisualStyleBackColor = false;
-            YedekBasla.Click += YedekBasla_Click;
             // 
             // label1
             // 
@@ -629,7 +628,7 @@
             label1.AutoSize = true;
             label1.BackColor = SystemColors.Control;
             label1.ForeColor = Color.DarkBlue;
-            label1.Location = new Point(20, 77);
+            label1.Location = new Point(12, 25);
             label1.Name = "label1";
             label1.Size = new Size(160, 32);
             label1.TabIndex = 15;
@@ -740,6 +739,7 @@
             Sil.TabIndex = 12;
             Sil.Text = "KİŞİ SİL";
             Sil.UseVisualStyleBackColor = false;
+            Sil.Click += Sil_Click;
             // 
             // Cinsiyet
             // 
@@ -866,7 +866,6 @@
         private Label KisiEkleAdi;
         private Button YeniKayit;
         private TabPage YedeklemePanel;
-        private Button YedekBasla;
      
        
         private Label label1;
@@ -916,7 +915,8 @@
         private ComboBox YedekKisiSec;
         private ComboBox YedekTarih;
         private Label label3;
-        private DataGridView YedekData;
         private Label label4;
+        private DataGridView YedekData;
+        private Button YedekBasla;
     }
 }

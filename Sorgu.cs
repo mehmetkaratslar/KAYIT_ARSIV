@@ -8,8 +8,7 @@ namespace KAYIT_ARSIV
 {
     public class Sorgu
     {
-        SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
-
+       private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
 
         public void KisiyeGoreSorgu(ComboBox KisiSorgu, ComboBox BelgeSorgu, TextBox YilSorgu, TextBox AySorgu, DataGridView SorguDataGrid)
         {

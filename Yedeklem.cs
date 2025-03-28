@@ -10,8 +10,7 @@ namespace KAYIT_ARSIV
 {
     public class Yedeklem
     {
-        private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
-
+      private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
         public void TarihleriYukle(ComboBox tarihComboBox)
         {
             try
