@@ -9,8 +9,7 @@ namespace KAYIT_VE_ARŞİV
 {
     public partial class Anasayfa : Form
     {
-        SqlConnection baglanti = new SqlConnection("Data Source=;Initial Catalog=KayitVeArsiv;Integrated Security=True;Trust Server Certificate=True");
-
+        private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
         Yedeklem yedek = new Yedeklem();
         public Anasayfa()
         {
@@ -102,7 +101,7 @@ namespace KAYIT_VE_ARŞİV
 
             adapter.Fill(dt);
             KisiGoster.DataSource = dt;
-            SorguDataGrid.DataSource = dt;
+            
 
         }
         #endregion
@@ -146,8 +145,10 @@ namespace KAYIT_VE_ARŞİV
 
         private void YeniKayit_Click(object sender, EventArgs e)
         {
+
             if (string.IsNullOrWhiteSpace(AdiEkle.Text) || string.IsNullOrWhiteSpace(SoyadiEkle.Text) || string.IsNullOrWhiteSpace(DogumTarihi.Text) || string.IsNullOrWhiteSpace(Cinsiyet.Text))
             {
+
                 MessageBox.Show("Lütfen tüm alanları doldurunuz.");
                 return;
             }
@@ -190,6 +191,8 @@ namespace KAYIT_VE_ARŞİV
             {
                 baglanti.Close();
             }
+            // Kayıt sonrası güncelleme
+            KisileriYukle(); // <-- ComboBox'ları güncelle
         }
 
         private void Guncelle_Click(object sender, EventArgs e)
@@ -250,6 +253,10 @@ namespace KAYIT_VE_ARŞİV
         {
 
             baglanti.Open();
+            DataTable dt = new DataTable();
+            SqlDataAdapter adapter = new SqlDataAdapter("SELECT * FROM Kisiler", baglanti);
+            adapter.Fill(dt);
+            KisiGoster.DataSource = dt;
             Listele();
             baglanti.Close();
 
@@ -400,18 +407,48 @@ namespace KAYIT_VE_ARŞİV
 
         #region YEDEKLEME ALANI
 
-
         private void YedekBasla_Click(object sender, EventArgs e)
         {
+
 
             Yedeklem yedeklem = new Yedeklem();
             yedeklem.KisiVeyaTumunuYedekle(KisiSorgu, YedekTarih, TumKisi, YedekData);
 
 
         }
+
         #endregion
 
 
 
+        private void Sil_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(Id.Text))
+            {
+                MessageBox.Show("Lütfen silinecek kişiyi seçiniz.");
+                return;
+            }
+
+            DialogResult sonuc = MessageBox.Show("Bu kişiyi silmek istediğinize emin misiniz?", "Onay", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (sonuc == DialogResult.Yes)
+            {
+                SqlCommand komut = new SqlCommand("DELETE FROM Kisiler WHERE KisiID = @KisiID", baglanti);
+                komut.Parameters.AddWithValue("@KisiID", Id.Text);
+
+                baglanti.Open();
+                komut.ExecuteNonQuery();
+                baglanti.Close();
+
+                MessageBox.Show("Kişi başarıyla silindi.");
+
+
+                // ComboBox'ları güncelle
+                KisileriYukle(); // <-- Bu metodu daha önce tanımlamıştık
+            }
+        }
+
+
+    
     }
 }
