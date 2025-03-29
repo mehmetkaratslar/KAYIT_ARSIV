@@ -1,49 +1,49 @@
--- Veritabaný oluþturma
+-- VeritabanÄ± oluÅŸturma
 CREATE DATABASE KayitVeArsiv
-COLLATE Turkish_CI_AS; -- Türkçe karakter desteði için collation ayarý
+COLLATE Turkish_CI_AS; -- TÃ¼rkÃ§e karakter desteÄŸi iÃ§in collation ayarÄ±
 
 USE KayitVeArsiv;
 
 CREATE TABLE Kisiler (
     KisiID INT IDENTITY(1,1) PRIMARY KEY, -- Otomatik artan birincil anahtar
-    Ad NVARCHAR(50) NOT NULL, -- Türkçe karakter desteði için NVARCHAR
+    Ad NVARCHAR(50) NOT NULL, -- TÃ¼rkÃ§e karakter desteÄŸi iÃ§in NVARCHAR
     Soyad NVARCHAR(50) NOT NULL,
     DogumTarihi DATE,
-    Cinsiyet NVARCHAR(10) -- Örneðin, "Erkek", "Kadýn"
+    Cinsiyet NVARCHAR(10) -- Ã–rneÄŸin, "Erkek", "KadÄ±n"
 );
 
 CREATE TABLE Belgeler (
     BelgeID INT IDENTITY(1,1) PRIMARY KEY, -- Otomatik artan birincil anahtar
-    BelgeTipi NVARCHAR(50) NOT NULL, -- Örneðin, "Ýþ", "Resmi", "Okul", "Saðlýk"
+    BelgeTipi NVARCHAR(50) NOT NULL, -- Ã–rneÄŸin, "Ä°ÅŸ", "Resmi", "Okul", "SaÄŸlÄ±k"
     BelgeAdi NVARCHAR(100) NOT NULL,
-    Dosya VARBINARY(MAX) NOT NULL, -- Fiziksel dosyanýn binary olarak saklanacaðý alan
-    DosyaTipi NVARCHAR(20) NOT NULL, -- Örneðin, "PDF", "Resim", "Excel"
-    YuklemeTarihi DATETIME DEFAULT GETDATE(), -- Yükleme tarihi otomatik olarak eklenir
-    DosyaAciklamasi NVARCHAR(255) -- Belgeyle ilgili açýklama
+    Dosya VARBINARY(MAX) NOT NULL, -- Fiziksel dosyanÄ±n binary olarak saklanacaÄŸÄ± alan
+    DosyaTipi NVARCHAR(20) NOT NULL, -- Ã–rneÄŸin, "PDF", "Resim", "Excel"
+    YuklemeTarihi DATETIME DEFAULT GETDATE(), -- YÃ¼kleme tarihi otomatik olarak eklenir
+    DosyaAciklamasi NVARCHAR(255) -- Belgeyle ilgili aÃ§Ä±klama
 );
 
 CREATE TABLE KisiBelge (
     BelgeID INT NOT NULL,
     KisiID INT NOT NULL,
-    PRIMARY KEY (BelgeID, KisiID), -- Birleþik birincil anahtar
+    PRIMARY KEY (BelgeID, KisiID), -- BirleÅŸik birincil anahtar
     FOREIGN KEY (BelgeID) REFERENCES Belgeler(BelgeID) ON DELETE CASCADE,
     FOREIGN KEY (KisiID) REFERENCES Kisiler(KisiID) ON DELETE CASCADE
 );
 
 --INSERT INTO Kisiler (Ad, Soyad, DogumTarihi, Cinsiyet)
---VALUES ('NESÝH', 'KARATAÞ', '1991-01-30', 'Erkek');
+--VALUES ('MERT', 'KARA', '1991-01-30', 'Erkek');
 
 --INSERT INTO Kisiler (Ad, Soyad, DogumTarihi, Cinsiyet)
---VALUES ('VESÝLA', 'KARATAÞ', '1997-05-15', 'Kadýn');
+--VALUES ('MELÄ°KE ', 'KAR', '1997-05-15', 'KadÄ±n');
 
 --INSERT INTO Kisiler (Ad, Soyad, DogumTarihi, Cinsiyet)
---VALUES ('HÝVDA', 'KARATAÞ', '2023-05-15', 'Kadýn');
+--VALUES ('SEMRA', 'KARTAL', '2023-05-15', 'KadÄ±n');
 
 --INSERT INTO Belgeler (BelgeTipi, BelgeAdi, Dosya, DosyaTipi, DosyaAciklamasi)
---VALUES ('Ýþ', 'Ýþ Sözleþmesi', 0x255044462D312E, 'PDF', 'NESÝH Yýlmaz iþ sözleþmesi');
+--VALUES ('Ä°ÅŸ', 'Ä°ÅŸ SÃ¶zleÅŸmesi', 0x255044462D312E, 'PDF', 'NESÄ°H YÄ±lmaz iÅŸ sÃ¶zleÅŸmesi');
 
 --INSERT INTO KisiBelge (BelgeID, KisiID)
---VALUES (1, 1); -- BelgeID 1, KisiID 1 ile iliþkilendirildi
+--VALUES (1, 1); -- BelgeID 1, KisiID 1 ile iliÅŸkilendirildi
 
 --SELECT k.Ad, k.Soyad, b.BelgeAdi, b.BelgeTipi, b.YuklemeTarihi
 --FROM Kisiler k
@@ -59,4 +59,4 @@ CREATE TABLE KisiBelge (
 
 --SELECT Dosya, DosyaTipi, BelgeAdi
 --FROM Belgeler
---WHERE BelgeID = 1; -- Örnek olarak BelgeID = 1
+--WHERE BelgeID = 1; -- Ã–rnek olarak BelgeID = 1
