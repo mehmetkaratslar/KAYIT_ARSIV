@@ -1,54 +1,57 @@
 using KAYIT_ARSIV;
-using Microsoft.Data.SqlClient;
+using System;
 using System.Data;
+using System.Data.SQLite;
 using System.Diagnostics;
+using System.IO;
 using System.Windows.Forms;
-
 
 namespace KAYIT_VE_ARŞİV
 {
     public partial class Anasayfa : Form
     {
-        private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
-        Yedeklem yedek = new Yedeklem();
+        private readonly SQLiteConnection baglanti = new(SQLiteHelper.GetConnectionString());
+        private readonly Yedeklem yedek = new();
+        private readonly DosyaAlani dosya = new();
+
         public Anasayfa()
         {
-            InitializeComponent();
-            KisileriYukle(); // ComboBox'lara kişileri yükle
-            BelgeTurleriniYukle(); // ComboBox'a belge türlerini yükle
-            yedek.TarihleriYukle(YedekTarih);
+            InitializeComponent(); // Sadece bir kez çağrılmalı
+            this.Load += Anasayfa_Load; // Form yüklenince çalışacak
+           
 
         }
 
+        private void Anasayfa_Load(object sender, EventArgs e)
+        {
+            DatabaseInitializer.InitializeDatabase(); // Veritabanını oluştur
 
-        #region BELGE TÜRLERİNİ YÜKLEME COMOBOXSA
 
+            KisileriYukle();                          // ComboBox'lara kişileri yükle
+            BelgeTurleriniYukle();                    // ComboBox'a belge türlerini yükle
+            yedek.TarihleriYukle(YedekTarih);         // Yedek tarihlerini yükle
+           
+
+        }
+
+        #region BELGE TÜRLERİNİ YÜKLEME
 
         private void BelgeTurleriniYukle()
         {
             try
             {
                 baglanti.Open();
-
-                // Belgeler tablosundaki benzersiz BelgeTipi değerlerini çek
                 string sorgu = "SELECT DISTINCT BelgeTipi FROM Belgeler";
-                SqlCommand komut = new SqlCommand(sorgu, baglanti);
-                SqlDataReader reader = komut.ExecuteReader();
-
-                // ComboBox'ı temizle
+                using SQLiteCommand komut = new(sorgu, baglanti);
+                using SQLiteDataReader reader = komut.ExecuteReader();
                 BelgeSorgu.Items.Clear();
 
-                // ComboBox'a belge türlerini ekle
-                // ComboBox'a belge türlerini ekle
                 while (reader.Read())
                 {
-                    var belgeTipi = reader["BelgeTipi"]?.ToString();
+                    string belgeTipi = reader["BelgeTipi"]?.ToString();
                     if (!string.IsNullOrEmpty(belgeTipi))
-                    {
                         BelgeSorgu.Items.Add(belgeTipi);
-                    }
                 }
-
             }
             catch (Exception ex)
             {
@@ -62,52 +65,42 @@ namespace KAYIT_VE_ARŞİV
 
         #endregion
 
-
-
-        #region KİŞİLERİN LİSTESİNİ GÖSTERME
+        #region KİŞİLERİ YÜKLEME
 
         void KisileriYukle()
         {
-            DataTable dt = new DataTable();
-            SqlDataAdapter adapter = new SqlDataAdapter("SELECT KisiID, Ad + ' ' + Soyad AS AdSoyad FROM Kisiler", baglanti);
+            DataTable dt = new();
+            SQLiteDataAdapter adapter = new("SELECT KisiID, Ad || ' ' || Soyad AS AdSoyad FROM Kisiler", baglanti);
             adapter.Fill(dt);
 
-            // KisiSec ComboBox'ına kişileri yükle
             KisiSec.DataSource = dt;
             KisiSec.DisplayMember = "AdSoyad";
             KisiSec.ValueMember = "KisiID";
 
-            // KisiSorgu ComboBox'ına kişileri yükle
-            KisiSorgu.DataSource = dt.Copy(); // DataTable'ın bir kopyasını kullan
+            KisiSorgu.DataSource = dt.Copy();
             KisiSorgu.DisplayMember = "AdSoyad";
             KisiSorgu.ValueMember = "KisiID";
 
-            YedekKisiSec.DataSource = dt.Copy(); // DataTable'ın bir kopyasını kullan
+            YedekKisiSec.DataSource = dt.Copy();
             YedekKisiSec.DisplayMember = "AdSoyad";
             YedekKisiSec.ValueMember = "KisiID";
-
         }
 
         #endregion
 
+        #region KİŞİ LİSTELEME
 
-
-        #region KİŞİ LİSTELEM İŞİ
         void Listele()
         {
-
-            DataTable dt = new DataTable();
-            SqlDataAdapter adapter = new SqlDataAdapter("Select * from Kisiler", baglanti);
-
+            DataTable dt = new();
+            SQLiteDataAdapter adapter = new("SELECT * FROM Kisiler", baglanti);
             adapter.Fill(dt);
             KisiGoster.DataSource = dt;
-            
-
         }
+
         #endregion
 
-
-        #region TEMİZLEME İŞİ
+        #region TEMİZLEME
 
         void Temizle()
         {
@@ -121,69 +114,51 @@ namespace KAYIT_VE_ARŞİV
             Sil_ID.Clear();
             BelgeTipi.Clear();
             BelgeAdi.Clear();
-
         }
+
         #endregion
 
-
-        #region SORGULAMA İŞLEMİ
+        #region SORGULAMA
 
         private void SorguYap_Click(object sender, EventArgs e)
         {
-
-            Sorgu sorgu = new Sorgu();
-            sorgu.KisiyeGoreSorgu(KisiSorgu, BelgeSorgu, YilSorgu, AySorgu, SorguDataGrid);
-
+            new Sorgu().KisiyeGoreSorgu(KisiSorgu, BelgeSorgu, YilSorgu, AySorgu, SorguDataGrid);
         }
-
 
         #endregion
 
-
-        #region YENİ KİŞİ KAYIT ALANI
-
+        #region YENİ KAYIT EKLEME
 
         private void YeniKayit_Click(object sender, EventArgs e)
         {
-
             if (string.IsNullOrWhiteSpace(AdiEkle.Text) || string.IsNullOrWhiteSpace(SoyadiEkle.Text) || string.IsNullOrWhiteSpace(DogumTarihi.Text) || string.IsNullOrWhiteSpace(Cinsiyet.Text))
             {
-
                 MessageBox.Show("Lütfen tüm alanları doldurunuz.");
+                return;
+            }
+
+            if (!DateTime.TryParse(DogumTarihi.Text, out DateTime dogumTarihi))
+            {
+                MessageBox.Show("Doğum tarihi geçersiz. Örnek: 1991-01-30");
                 return;
             }
 
             try
             {
-                DateTime dogumTarihi;
-                if (!DateTime.TryParse(DogumTarihi.Text, out dogumTarihi))
-                {
-                    MessageBox.Show("Lütfen Doğum tarihi doğru formatta giriniz. Örnek:1991-01-30 bu şekilinde olmalı");
-                    return;
-                }
-                else if (AdiEkle.Text.Length < 2 || SoyadiEkle.Text.Length < 2 || Cinsiyet.Text.Length < 2)
-                {
-                    MessageBox.Show("Ad, soyad ve cinsiyet alanları düzgün giriniz");
-                    return;
-                }
-
                 baglanti.Open();
-                SqlCommand komut = new SqlCommand("INSERT INTO Kisiler (Ad, Soyad, DogumTarihi, Cinsiyet) VALUES (@Ad, @Soyad, @DogumTarihi, @Cinsiyet)", baglanti);
+                SQLiteCommand komut = new("INSERT INTO Kisiler (Ad, Soyad, DogumTarihi, Cinsiyet) VALUES (@Ad, @Soyad, @DogumTarihi, @Cinsiyet)", baglanti);
                 komut.Parameters.AddWithValue("@Ad", AdiEkle.Text);
                 komut.Parameters.AddWithValue("@Soyad", SoyadiEkle.Text);
                 komut.Parameters.AddWithValue("@DogumTarihi", dogumTarihi);
                 komut.Parameters.AddWithValue("@Cinsiyet", Cinsiyet.Text);
-
                 komut.ExecuteNonQuery();
 
-                MessageBox.Show("Kişi başarıyla eklendi.");
+                MessageBox.Show("Kişi eklendi.");
                 Listele();
-
-                // TextBox'ları temizle
                 Temizle();
-
+                KisileriYukle();
             }
-            catch (SqlException ex)
+            catch (SQLiteException ex)
             {
                 MessageBox.Show("Veritabanı hatası: " + ex.Message);
             }
@@ -191,52 +166,40 @@ namespace KAYIT_VE_ARŞİV
             {
                 baglanti.Close();
             }
-            // Kayıt sonrası güncelleme
-            KisileriYukle(); // <-- ComboBox'ları güncelle
         }
 
         private void Guncelle_Click(object sender, EventArgs e)
         {
-
-            if (string.IsNullOrWhiteSpace(labelID.Text) || string.IsNullOrWhiteSpace(AdiEkle.Text) || string.IsNullOrWhiteSpace(SoyadiEkle.Text) || string.IsNullOrWhiteSpace(DogumTarihi.Text) || string.IsNullOrWhiteSpace(Cinsiyet.Text))
+            if (string.IsNullOrWhiteSpace(Id.Text))
             {
-                MessageBox.Show("Lütfen tüm alanları doldurunuz.");
+                MessageBox.Show("Lütfen bir kişi seçiniz.");
+                return;
+            }
+
+            if (!DateTime.TryParse(DogumTarihi.Text, out DateTime dogumTarihi))
+            {
+                MessageBox.Show("Geçersiz tarih formatı.");
                 return;
             }
 
             try
             {
-                DateTime dogumTarihi;
-                if (!DateTime.TryParse(DogumTarihi.Text, out dogumTarihi))
-                {
-                    MessageBox.Show("Lütfen Doğum tarihi doğru formatta giriniz. Örnek:1991-01-30 bu şekilinde olmalı");
-                    return;
-                }
-                else if (AdiEkle.Text.Length < 2 || SoyadiEkle.Text.Length < 2 || Cinsiyet.Text.Length < 2)
-                {
-                    MessageBox.Show("Ad, soyad ve cinsiyet alanları düzgün giriniz");
-                    return;
-                }
-
                 baglanti.Open();
-                SqlCommand komut = new SqlCommand("UPDATE Kisiler SET Ad = @Ad, Soyad = @Soyad, DogumTarihi = @DogumTarihi, Cinsiyet = @Cinsiyet WHERE KisiID = @KisiID", baglanti);
+                SQLiteCommand komut = new("UPDATE Kisiler SET Ad = @Ad, Soyad = @Soyad, DogumTarihi = @DogumTarihi, Cinsiyet = @Cinsiyet WHERE KisiID = @KisiID", baglanti);
                 komut.Parameters.AddWithValue("@KisiID", Id.Text);
                 komut.Parameters.AddWithValue("@Ad", AdiEkle.Text);
                 komut.Parameters.AddWithValue("@Soyad", SoyadiEkle.Text);
                 komut.Parameters.AddWithValue("@DogumTarihi", dogumTarihi);
                 komut.Parameters.AddWithValue("@Cinsiyet", Cinsiyet.Text);
-
                 komut.ExecuteNonQuery();
 
-                MessageBox.Show("Kişi başarıyla güncellendi.");
+                MessageBox.Show("Kişi güncellendi.");
                 Listele();
-
-                // TextBox'ları temizle
                 Temizle();
             }
-            catch (SqlException ex)
+            catch (SQLiteException ex)
             {
-                MessageBox.Show("Veritabanı hatası: " + ex.Message);
+                MessageBox.Show("Hata: " + ex.Message);
             }
             finally
             {
@@ -246,21 +209,11 @@ namespace KAYIT_VE_ARŞİV
 
         #endregion
 
-
-        #region  KİŞİ VERİSİ GETİRME ALANI
+        #region KİŞİ GETİRME
 
         private void KisiGetir_Click(object sender, EventArgs e)
         {
-
-            baglanti.Open();
-            DataTable dt = new DataTable();
-            SqlDataAdapter adapter = new SqlDataAdapter("SELECT * FROM Kisiler", baglanti);
-            adapter.Fill(dt);
-            KisiGoster.DataSource = dt;
             Listele();
-            baglanti.Close();
-
-
         }
 
         private void KisiGoster_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -269,94 +222,60 @@ namespace KAYIT_VE_ARŞİV
             {
                 DataGridViewRow row = KisiGoster.Rows[e.RowIndex];
 
-                Id.Text = row.Cells["KisiID"].Value.ToString();
-                AdiEkle.Text = row.Cells["Ad"].Value.ToString();
-                SoyadiEkle.Text = row.Cells["Soyad"].Value.ToString();
-                DogumTarihi.Text = Convert.ToDateTime(row.Cells["DogumTarihi"].Value).ToString("yyyy-MM-dd");
-                Cinsiyet.Text = row.Cells["Cinsiyet"].Value.ToString();
+                Id.Text = row.Cells["KisiID"].Value?.ToString();
+                AdiEkle.Text = row.Cells["Ad"].Value?.ToString();
+                SoyadiEkle.Text = row.Cells["Soyad"].Value?.ToString();
+
+                var dogumTarihiDegeri = row.Cells["DogumTarihi"].Value;
+                if (dogumTarihiDegeri != null && DateTime.TryParse(dogumTarihiDegeri.ToString(), out DateTime dogumTarihi))
+                {
+                    DogumTarihi.Text = dogumTarihi.ToString("yyyy-MM-dd");
+                }
+                else
+                {
+                    DogumTarihi.Text = string.Empty;
+                }
+
+                Cinsiyet.Text = row.Cells["Cinsiyet"].Value?.ToString();
             }
         }
+
 
         #endregion
 
+        #region DOSYA İŞLEMLERİ
 
-        #region DOSYALAMA İŞLEMİ
-
-
-        void DosyalariListele()
-        {
-            DataTable veri = new DataTable();
-            SqlDataAdapter adptr = new SqlDataAdapter(" SELECT b.BelgeID,b.BelgeTipi,b.BelgeAdi,b.DosyaTipi,b.YuklemeTarihi,b.DosyaAciklamasi," +
-                "k.Ad + ' ' + k.Soyad AS AdSoyad FROM Belgeler b INNER JOIN KisiBelge kb ON b.BelgeID = kb.BelgeID INNER JOIN " +
-                "Kisiler k ON kb.KisiID = k.KisiID ORDER BY  b.YuklemeTarihi DESC", baglanti);
-            adptr.Fill(veri);
-            SonDosya.DataSource = veri;
-            Temizle();
-        }
         private void D_ekle_Click(object sender, EventArgs e)
         {
-            OpenFileDialog dosya = new OpenFileDialog();
-            dosya.Multiselect = true;
-            // Desteklenen dosya türleri: resim, PDF, Word
-            dosya.Filter = "Resim, PDF ve Word Dosyaları|*.jpg;*.jpeg;*.png;*.pdf;*.doc;*.docx";
+            OpenFileDialog dosya = new OpenFileDialog
+            {
+                Multiselect = true,
+                Filter = "Resim, PDF ve Word Dosyaları|*.jpg;*.jpeg;*.png;*.pdf;*.doc;*.docx"
+            };
 
             if (dosya.ShowDialog() != DialogResult.OK)
-            {
                 return;
-            }
 
             foreach (string dosyaYolu in dosya.FileNames)
             {
-                // Dosya adını alıyoruz
                 string dosyaAdi = Path.GetFileName(dosyaYolu);
-
-
-                // Dinamik olarak bir LinkLabel oluşturuyoruz
-                LinkLabel link = new LinkLabel();
-                link.Text = dosyaAdi;
-                // Dosya yolunu Tag özelliğinde saklıyoruz
-                link.Tag = dosyaYolu;
-                link.AutoSize = true;
-                link.Margin = new Padding(5);
-
-                // LinkLabel'e tıklandığında dosyayı açacak olay ekliyoruz
-                link.Click += (s, ev) =>
+                LinkLabel link = new LinkLabel
                 {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo(dosyaYolu) { UseShellExecute = true });
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Dosya açılamadı: " + ex.Message);
-                    }
+                    Text = dosyaAdi,
+                    Tag = dosyaYolu,
+                    AutoSize = true,
+                    Margin = new Padding(5)
                 };
 
-                // LinkLabel'i FlowLayoutPanel (veya başka bir container) içine ekliyoruz
+                link.Click += (s, ev) =>
+                {
+                    try { Process.Start(new ProcessStartInfo(dosyaYolu) { UseShellExecute = true }); }
+                    catch (Exception ex) { MessageBox.Show("Dosya açılamadı: " + ex.Message); }
+                };
+
                 flowLayoutPanel1.Controls.Add(link);
-
-            }
-
-        }
-        private void SonDosya_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex >= 0)
-            {
-                DataGridViewRow row = SonDosya.Rows[e.RowIndex];
-
-                Sil_ID.Text = row.Cells["BelgeID"].Value.ToString();
-                BelgeTipi.Text = row.Cells["BelgeTipi"].Value.ToString();
-                BelgeAdi.Text = row.Cells["BelgeAdi"].Value.ToString();
-                DosyaTipi.Text = row.Cells["DosyaTipi"].Value.ToString();
-                DosyaAciklamasi.Text = row.Cells["DosyaAciklamasi"].Value.ToString();
             }
         }
-
-        private void SonDosyaGetir_Click(object sender, EventArgs e)
-        {
-            dosya.DosyaListele(SonDosya);
-        }
-        DosyaAlani dosya = new DosyaAlani();
 
         private void D_Kaydet_Click(object sender, EventArgs e)
         {
@@ -371,23 +290,10 @@ namespace KAYIT_VE_ARŞİV
             Temizle();
         }
 
-        private void SonDosya_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        private void DosyaGuncelle_Click(object sender, EventArgs e)
         {
-            if (e.RowIndex >= 0)
-                Sil_ID.Text = SonDosya.Rows[e.RowIndex].Cells["BelgeID"].Value.ToString();
-        }
-
-        private void SonDosya_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex >= 0)
-            {
-                DataGridViewRow row = SonDosya.Rows[e.RowIndex];
-                Sil_ID.Text = row.Cells["BelgeID"].Value.ToString();
-                BelgeTipi.Text = row.Cells["BelgeTipi"].Value.ToString();
-                BelgeAdi.Text = row.Cells["BelgeAdi"].Value.ToString();
-                DosyaTipi.Text = row.Cells["DosyaTipi"].Value.ToString();
-                DosyaAciklamasi.Text = row.Cells["DosyaAciklamasi"].Value.ToString();
-            }
+            dosya.DosyaGuncelle(Sil_ID, BelgeTipi, BelgeAdi, DosyaTipi, DosyaAciklamasi, SonDosya);
+            Temizle();
         }
 
         private void DosyaAc_Click(object sender, EventArgs e)
@@ -396,34 +302,38 @@ namespace KAYIT_VE_ARŞİV
                 dosya.DosyaAc(Convert.ToInt32(Sil_ID.Text));
         }
 
-        private void DosyaGuncelle_Click(object sender, EventArgs e)
+        private void SonDosyaGetir_Click(object sender, EventArgs e)
         {
-            dosya.DosyaGuncelle(Sil_ID, BelgeTipi, BelgeAdi, DosyaTipi, DosyaAciklamasi, SonDosya);
-            Temizle();
+            dosya.DosyaListele(SonDosya);
+        }
+
+        private void SonDosya_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                var row = SonDosya.Rows[e.RowIndex];
+                Sil_ID.Text = row.Cells["BelgeID"].Value.ToString();
+                BelgeTipi.Text = row.Cells["BelgeTipi"].Value.ToString();
+                BelgeAdi.Text = row.Cells["BelgeAdi"].Value.ToString();
+                DosyaTipi.Text = row.Cells["DosyaTipi"].Value.ToString();
+                DosyaAciklamasi.Text = row.Cells["DosyaAciklamasi"].Value.ToString();
+            }
         }
 
         #endregion
 
-
-        #region YEDEKLEME ALANI
+        #region YEDEKLEME
 
         private void YedekBasla_Click(object sender, EventArgs e)
         {
-
-
-            Yedeklem yedeklem = new Yedeklem();
-            yedeklem.KisiVeyaTumunuYedekle(KisiSorgu, YedekTarih, TumKisi, YedekData);
-
-
+            yedek.KisiVeyaTumunuYedekle(KisiSorgu, YedekTarih, TumKisi, YedekData);
         }
 
         #endregion
 
-
-
         private void Sil_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(Id.Text))
+            if (string.IsNullOrWhiteSpace(Id.Text))
             {
                 MessageBox.Show("Lütfen silinecek kişiyi seçiniz.");
                 return;
@@ -433,22 +343,37 @@ namespace KAYIT_VE_ARŞİV
 
             if (sonuc == DialogResult.Yes)
             {
-                SqlCommand komut = new SqlCommand("DELETE FROM Kisiler WHERE KisiID = @KisiID", baglanti);
-                komut.Parameters.AddWithValue("@KisiID", Id.Text);
-
                 baglanti.Open();
+                SQLiteCommand komut = new("DELETE FROM Kisiler WHERE KisiID = @KisiID", baglanti);
+                komut.Parameters.AddWithValue("@KisiID", Id.Text);
                 komut.ExecuteNonQuery();
                 baglanti.Close();
 
-                MessageBox.Show("Kişi başarıyla silindi.");
-
-
-                // ComboBox'ları güncelle
-                KisileriYukle(); // <-- Bu metodu daha önce tanımlamıştık
+                MessageBox.Show("Kişi silindi.");
+                KisileriYukle();
+                Listele();
+                Temizle();
             }
         }
 
 
-    
+        private void SorguDataGrid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                DataGridViewRow row = SorguDataGrid.Rows[e.RowIndex];
+
+                if (row.Cells["BelgeID"]?.Value != null)
+                {
+                    int belgeID = Convert.ToInt32(row.Cells["BelgeID"].Value);
+                    dosya.DosyaAc(belgeID); // DosyaAlani sınıfından çağırıyoruz
+                }
+                else
+                {
+                    MessageBox.Show("BelgeID bulunamadı.");
+                }
+            }
+        }
+
     }
 }

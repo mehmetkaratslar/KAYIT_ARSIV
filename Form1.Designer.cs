@@ -195,6 +195,8 @@
             SorguDataGrid.RowHeadersWidth = 62;
             SorguDataGrid.Size = new Size(1820, 856);
             SorguDataGrid.TabIndex = 6;
+            SorguDataGrid.CellContentClick += SorguDataGrid_CellDoubleClick;
+            SorguDataGrid.DoubleClick += DosyaAc_Click;
             // 
             // KisiSorgu
             // 
@@ -837,6 +839,7 @@
             Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Anasayfa";
             Text = "KAYIT VE ARŞİV";
+            Load += Anasayfa_Load;
             tabControl1.ResumeLayout(false);
             SorguPanel.ResumeLayout(false);
             SorguPanel.PerformLayout();

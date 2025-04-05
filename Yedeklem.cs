@@ -1,29 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.IO;
 using System.Windows.Forms;
-using Microsoft.Data.SqlClient;
 
 namespace KAYIT_ARSIV
 {
     public class Yedeklem
     {
-      private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
+        private readonly SQLiteConnection baglanti = new(SQLiteHelper.GetConnectionString());
+
         public void TarihleriYukle(ComboBox tarihComboBox)
         {
             try
             {
                 baglanti.Open();
-                string sorgu = "SELECT DISTINCT CAST(YuklemeTarihi AS DATE) AS Tarih FROM Belgeler ORDER BY Tarih DESC";
+                string sorgu = "SELECT DISTINCT date(YuklemeTarihi) AS Tarih FROM Belgeler ORDER BY Tarih DESC";
 
-                SqlCommand komut = new SqlCommand(sorgu, baglanti);
-                SqlDataReader reader = komut.ExecuteReader();
+                SQLiteCommand komut = new(sorgu, baglanti);
+                SQLiteDataReader reader = komut.ExecuteReader();
 
                 while (reader.Read())
                 {
-                    DateTime tarih = reader.GetDateTime(0);
+                    DateTime tarih = Convert.ToDateTime(reader["Tarih"]);
                     tarihComboBox.Items.Add(tarih);
                 }
 
@@ -64,13 +64,14 @@ namespace KAYIT_ARSIV
 
                 if (TumKisilerCheckBox.Checked)
                 {
-                    SqlCommand cmd = new SqlCommand("SELECT KisiID, Ad + ' ' + Soyad AS AdSoyad FROM Kisiler", baglanti);
-                    SqlDataReader dr = cmd.ExecuteReader();
+                    string kisiSorgu = "SELECT KisiID, Ad || ' ' || Soyad AS AdSoyad FROM Kisiler";
+                    SQLiteCommand cmd = new(kisiSorgu, baglanti);
+                    SQLiteDataReader dr = cmd.ExecuteReader();
 
                     var kisiListesi = new List<(int KisiID, string AdSoyad)>();
                     while (dr.Read())
                     {
-                        int kisiID = (int)dr["KisiID"];
+                        int kisiID = Convert.ToInt32(dr["KisiID"]);
                         string adSoyad = dr["AdSoyad"].ToString();
                         kisiListesi.Add((kisiID, adSoyad));
                     }
@@ -92,7 +93,7 @@ namespace KAYIT_ARSIV
                         return;
                     }
 
-                    int kisiID = (int)KisiComboBox.SelectedValue;
+                    int kisiID = Convert.ToInt32(KisiComboBox.SelectedValue);
                     string kisiAdi = KisiComboBox.Text;
                     string kisiKlasoru = Path.Combine(yedeklemeAnaYolu, kisiAdi);
                     Directory.CreateDirectory(kisiKlasoru);
@@ -123,25 +124,26 @@ namespace KAYIT_ARSIV
 
             string sorgu = @"
                 SELECT b.BelgeAdi, b.Dosya, b.DosyaTipi, b.BelgeTipi, b.YuklemeTarihi,
-                       k.Ad + ' ' + k.Soyad AS KisiAdi
+                       k.Ad || ' ' || k.Soyad AS KisiAdi
                 FROM Belgeler b
                 INNER JOIN KisiBelge kb ON b.BelgeID = kb.BelgeID
                 INNER JOIN Kisiler k ON kb.KisiID = k.KisiID
                 WHERE kb.KisiID = @KisiID";
 
-            SqlCommand komut = new SqlCommand();
+            if (!string.IsNullOrEmpty(tarihFiltre))
+            {
+                sorgu += " AND date(b.YuklemeTarihi) = @Tarih";
+            }
+
+            SQLiteCommand komut = new(sorgu, baglanti);
+            komut.Parameters.AddWithValue("@KisiID", kisiID);
 
             if (!string.IsNullOrEmpty(tarihFiltre))
             {
-                sorgu += " AND CAST(b.YuklemeTarihi AS DATE) = @Tarih";
                 komut.Parameters.AddWithValue("@Tarih", tarihFiltre);
             }
 
-            komut.Connection = baglanti;
-            komut.CommandText = sorgu;
-            komut.Parameters.AddWithValue("@KisiID", kisiID);
-
-            SqlDataReader reader = komut.ExecuteReader();
+            SQLiteDataReader reader = komut.ExecuteReader();
 
             while (reader.Read())
             {
@@ -152,7 +154,6 @@ namespace KAYIT_ARSIV
                 DateTime yuklemeTarihi = Convert.ToDateTime(reader["YuklemeTarihi"]);
                 byte[] dosya = (byte[])reader["Dosya"];
 
-                // Her belge için tarih klasörü oluşturuluyor (eğer tarih filtrelenmemişse)
                 string tarihKlasoru = yuklemeTarihi.ToString("dd.MM.yyyy");
                 string tamKlasorYolu = Path.Combine(kisiKlasoru, tarihKlasoru, belgeTuru);
                 Directory.CreateDirectory(tamKlasorYolu);
