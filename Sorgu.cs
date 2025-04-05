@@ -1,14 +1,13 @@
-﻿using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Data;
+using System.Data.SQLite;
 using System.Windows.Forms;
 
 namespace KAYIT_ARSIV
 {
     public class Sorgu
     {
-       private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
+        private readonly SQLiteConnection baglanti = new(SQLiteHelper.GetConnectionString());
 
         public void KisiyeGoreSorgu(ComboBox KisiSorgu, ComboBox BelgeSorgu, TextBox YilSorgu, TextBox AySorgu, DataGridView SorguDataGrid)
         {
@@ -18,30 +17,30 @@ namespace KAYIT_ARSIV
                 return;
             }
 
-            int kisiID = (int)KisiSorgu.SelectedValue;
+            int kisiID = Convert.ToInt32(KisiSorgu.SelectedValue);
             string? belgeTuru = BelgeSorgu.SelectedItem?.ToString();
             string? yil = YilSorgu.Text.Trim();
             string? ay = AySorgu.Text.Trim();
 
             string sorgu = @"
-        SELECT 
-            b.BelgeID, 
-            b.BelgeTipi, 
-            b.BelgeAdi, 
-            b.DosyaTipi, 
-            b.YuklemeTarihi, 
-            b.DosyaAciklamasi,
-            k.Ad + ' ' + k.Soyad AS AdSoyad
-        FROM 
-            Belgeler b
-        INNER JOIN 
-            KisiBelge kb ON b.BelgeID = kb.BelgeID
-        INNER JOIN 
-            Kisiler k ON kb.KisiID = k.KisiID
-        WHERE 
-            kb.KisiID = @KisiID";
+                SELECT 
+                    b.BelgeID, 
+                    b.BelgeTipi, 
+                    b.BelgeAdi, 
+                    b.DosyaTipi, 
+                    b.YuklemeTarihi, 
+                    b.DosyaAciklamasi,
+                    k.Ad || ' ' || k.Soyad AS AdSoyad
+                FROM 
+                    Belgeler b
+                INNER JOIN 
+                    KisiBelge kb ON b.BelgeID = kb.BelgeID
+                INNER JOIN 
+                    Kisiler k ON kb.KisiID = k.KisiID
+                WHERE 
+                    kb.KisiID = @KisiID";
 
-            // Dinamik sorguya yıl ve ayı ekle
+            // Dinamik filtre eklemeleri
             if (!string.IsNullOrEmpty(belgeTuru))
             {
                 sorgu += " AND b.BelgeTipi = @BelgeTipi";
@@ -49,18 +48,19 @@ namespace KAYIT_ARSIV
 
             if (!string.IsNullOrEmpty(yil))
             {
-                sorgu += " AND YEAR(b.YuklemeTarihi) = @Yil";
+                sorgu += " AND strftime('%Y', b.YuklemeTarihi) = @Yil";
             }
 
             if (!string.IsNullOrEmpty(ay))
             {
-                sorgu += " AND MONTH(b.YuklemeTarihi) = @Ay";
+                sorgu += " AND strftime('%m', b.YuklemeTarihi) = @Ay";
             }
 
             try
             {
                 baglanti.Open();
-                SqlDataAdapter adapter = new SqlDataAdapter(sorgu, baglanti);
+
+                SQLiteDataAdapter adapter = new SQLiteDataAdapter(sorgu, baglanti);
                 adapter.SelectCommand.Parameters.AddWithValue("@KisiID", kisiID);
 
                 if (!string.IsNullOrEmpty(belgeTuru))
@@ -68,14 +68,15 @@ namespace KAYIT_ARSIV
                     adapter.SelectCommand.Parameters.AddWithValue("@BelgeTipi", belgeTuru);
                 }
 
-                if (!string.IsNullOrEmpty(yil) && int.TryParse(yil, out int yilInt))
+                if (!string.IsNullOrEmpty(yil))
                 {
-                    adapter.SelectCommand.Parameters.AddWithValue("@Yil", yilInt);
+                    adapter.SelectCommand.Parameters.AddWithValue("@Yil", yil);
                 }
 
                 if (!string.IsNullOrEmpty(ay) && int.TryParse(ay, out int ayInt))
                 {
-                    adapter.SelectCommand.Parameters.AddWithValue("@Ay", ayInt);
+                    // SQLite'ta ay 2 basamaklı olmalı: 01, 02, ..., 12
+                    adapter.SelectCommand.Parameters.AddWithValue("@Ay", ayInt.ToString("D2"));
                 }
 
                 DataTable dt = new DataTable();
@@ -91,12 +92,5 @@ namespace KAYIT_ARSIV
                 baglanti.Close();
             }
         }
-
-
-
-
     }
-
-
-
 }

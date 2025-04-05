@@ -1,16 +1,15 @@
 ﻿using System;
 using System.Data;
-using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
-using Microsoft.Data.SqlClient;
 
 namespace KAYIT_ARSIV
 {
     public class DosyaAlani
     {
-        private SqlConnection baglanti = new SqlConnection("Data Source=MEHMET;Initial Catalog=KayitVeArsiv;Integrated Security=True;TrustServerCertificate=True");
+        private readonly SQLiteConnection baglanti = new(SQLiteHelper.GetConnectionString());
 
         public void DosyaEkle(ComboBox kisiSec, TextBox belgeTipi, TextBox dosyaAciklama, FlowLayoutPanel panel)
         {
@@ -20,7 +19,7 @@ namespace KAYIT_ARSIV
                 return;
             }
 
-            int kisiID = (int)kisiSec.SelectedValue;
+            int kisiID = Convert.ToInt32(kisiSec.SelectedValue);
 
             try
             {
@@ -38,24 +37,25 @@ namespace KAYIT_ARSIV
                         }
 
                         byte[] dosyaBytes = File.ReadAllBytes(dosyaYolu);
-                        string dosyaAdi = Path.GetFileNameWithoutExtension(dosyaYolu); // sadece isim
-                        string uzanti = Path.GetExtension(dosyaYolu).ToLower();        // sadece uzantı (.pdf vs)
+                        string dosyaAdi = Path.GetFileNameWithoutExtension(dosyaYolu);
+                        string uzanti = Path.GetExtension(dosyaYolu).ToLower();
 
-                        SqlCommand belgeKomut = new SqlCommand(@"
-                    INSERT INTO Belgeler (BelgeTipi, BelgeAdi, Dosya, DosyaTipi, YuklemeTarihi, DosyaAciklamasi)
-                    VALUES (@BelgeTipi, @BelgeAdi, @Dosya, @DosyaTipi, @YuklemeTarihi, @DosyaAciklamasi);
-                    SELECT SCOPE_IDENTITY();", baglanti);
+                        // Belge ekle
+                        SQLiteCommand belgeKomut = new SQLiteCommand(@"
+                            INSERT INTO Belgeler (BelgeTipi, BelgeAdi, Dosya, DosyaTipi, YuklemeTarihi, DosyaAciklamasi)
+                            VALUES (@BelgeTipi, @BelgeAdi, @Dosya, @DosyaTipi, CURRENT_TIMESTAMP, @DosyaAciklamasi);
+                            SELECT last_insert_rowid();", baglanti);
 
                         belgeKomut.Parameters.AddWithValue("@BelgeTipi", belgeTipi.Text);
-                        belgeKomut.Parameters.AddWithValue("@BelgeAdi", dosyaAdi); // HER DOSYA İÇİN FARKLI AD
+                        belgeKomut.Parameters.AddWithValue("@BelgeAdi", dosyaAdi);
                         belgeKomut.Parameters.AddWithValue("@Dosya", dosyaBytes);
                         belgeKomut.Parameters.AddWithValue("@DosyaTipi", uzanti);
-                        belgeKomut.Parameters.AddWithValue("@YuklemeTarihi", DateTime.Now);
                         belgeKomut.Parameters.AddWithValue("@DosyaAciklamasi", dosyaAciklama.Text);
 
-                        int belgeID = Convert.ToInt32(belgeKomut.ExecuteScalar());
+                        long belgeID = (long)belgeKomut.ExecuteScalar();
 
-                        SqlCommand kisiBelgeKomut = new SqlCommand("INSERT INTO KisiBelge (BelgeID, KisiID) VALUES (@BelgeID, @KisiID)", baglanti);
+                        // Kisi-Belge eşle
+                        SQLiteCommand kisiBelgeKomut = new SQLiteCommand("INSERT INTO KisiBelge (BelgeID, KisiID) VALUES (@BelgeID, @KisiID)", baglanti);
                         kisiBelgeKomut.Parameters.AddWithValue("@BelgeID", belgeID);
                         kisiBelgeKomut.Parameters.AddWithValue("@KisiID", kisiID);
                         kisiBelgeKomut.ExecuteNonQuery();
@@ -78,14 +78,17 @@ namespace KAYIT_ARSIV
         public void DosyaListele(DataGridView grid)
         {
             DataTable veri = new DataTable();
-            SqlDataAdapter adptr = new SqlDataAdapter(@"
+
+            string sql = @"
                 SELECT b.BelgeID, b.BelgeTipi, b.BelgeAdi, b.DosyaTipi, b.YuklemeTarihi, b.DosyaAciklamasi,
-                       k.Ad + ' ' + k.Soyad AS AdSoyad
+                       k.Ad || ' ' || k.Soyad AS AdSoyad
                 FROM Belgeler b
                 INNER JOIN KisiBelge kb ON b.BelgeID = kb.BelgeID
                 INNER JOIN Kisiler k ON kb.KisiID = k.KisiID
-                ORDER BY b.YuklemeTarihi DESC", baglanti);
-            adptr.Fill(veri);
+                ORDER BY b.YuklemeTarihi DESC";
+
+            SQLiteDataAdapter adapter = new SQLiteDataAdapter(sql, baglanti);
+            adapter.Fill(veri);
             grid.DataSource = veri;
         }
 
@@ -100,7 +103,7 @@ namespace KAYIT_ARSIV
             try
             {
                 baglanti.Open();
-                SqlCommand komut = new SqlCommand("DELETE FROM Belgeler WHERE BelgeID = @BelgeID", baglanti);
+                SQLiteCommand komut = new SQLiteCommand("DELETE FROM Belgeler WHERE BelgeID = @BelgeID", baglanti);
                 komut.Parameters.AddWithValue("@BelgeID", silID.Text);
                 komut.ExecuteNonQuery();
 
@@ -122,22 +125,23 @@ namespace KAYIT_ARSIV
             try
             {
                 baglanti.Open();
-                SqlCommand komut = new SqlCommand("SELECT Dosya, DosyaTipi, BelgeAdi FROM Belgeler WHERE BelgeID = @BelgeID", baglanti);
+
+                SQLiteCommand komut = new SQLiteCommand("SELECT Dosya, DosyaTipi, BelgeAdi FROM Belgeler WHERE BelgeID = @BelgeID", baglanti);
                 komut.Parameters.AddWithValue("@BelgeID", belgeID);
 
-                SqlDataReader reader = komut.ExecuteReader();
-                if (reader.Read())
+                using (SQLiteDataReader reader = komut.ExecuteReader())
                 {
-                    byte[] dosyaBytes = (byte[])reader["Dosya"];
-                    string tip = reader["DosyaTipi"].ToString();
-                    string ad = reader["BelgeAdi"].ToString();
+                    if (reader.Read())
+                    {
+                        byte[] dosyaBytes = (byte[])reader["Dosya"];
+                        string tip = reader["DosyaTipi"].ToString();
+                        string ad = reader["BelgeAdi"].ToString();
 
-                    string yol = Path.Combine(Path.GetTempPath(), ad + tip);
-                    File.WriteAllBytes(yol, dosyaBytes);
-                    Process.Start(new ProcessStartInfo(yol) { UseShellExecute = true });
+                        string yol = Path.Combine(Path.GetTempPath(), ad + tip);
+                        File.WriteAllBytes(yol, dosyaBytes);
+                        Process.Start(new ProcessStartInfo(yol) { UseShellExecute = true });
+                    }
                 }
-
-                reader.Close();
             }
             catch (Exception ex)
             {
@@ -154,10 +158,12 @@ namespace KAYIT_ARSIV
             try
             {
                 baglanti.Open();
-                SqlCommand komut = new SqlCommand(@"
+                SQLiteCommand komut = new SQLiteCommand(@"
                     UPDATE Belgeler
-                    SET BelgeTipi = @BelgeTipi, BelgeAdi = @BelgeAdi,
-                        DosyaTipi = @DosyaTipi, DosyaAciklamasi = @DosyaAciklamasi
+                    SET BelgeTipi = @BelgeTipi,
+                        BelgeAdi = @BelgeAdi,
+                        DosyaTipi = @DosyaTipi,
+                        DosyaAciklamasi = @DosyaAciklamasi
                     WHERE BelgeID = @BelgeID", baglanti);
 
                 komut.Parameters.AddWithValue("@BelgeTipi", belgeTipi.Text);
